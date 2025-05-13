@@ -8,9 +8,11 @@ import (
 )
 
 type Estimated struct {
-	closeChannel chan struct{}
-	closeOnce    sync.Once
-	now          int64
+	_               sync.Mutex
+	closeChannel    chan struct{}
+	closeOnce       sync.Once
+	now             int64
+	timestampOffset time.Duration
 }
 
 func NewEstimated(accuracy time.Duration) *Estimated {
