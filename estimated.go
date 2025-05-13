@@ -15,7 +15,7 @@ type Estimated struct {
 	timestampOffset time.Duration
 }
 
-func NewEstimated(accuracy time.Duration) *Estimated {
+func NewEstimated(accuracy time.Duration, timestamp time.Time) *Estimated {
 	if accuracy <= time.Nanosecond {
 		panic(errors.New("accuracy should be more than a nanosecond"))
 	}
@@ -26,19 +26,22 @@ func NewEstimated(accuracy time.Duration) *Estimated {
 		now:          nanotime(),
 	}
 
+	est.timestampOffset = -time.Duration(timestamp.UnixNano() - est.now)
+
 	wg := sync.WaitGroup{}
+
 	wg.Add(1)
 
 	go func() {
-		timer := time.NewTicker(accuracy)
-		defer timer.Stop()
+		monoTimer := time.NewTicker(accuracy)
+		defer monoTimer.Stop()
 		wg.Done()
 		for {
-			_ = est.Update()
+			atomic.StoreInt64(&est.now, nanotime())
 			select {
 			case <-est.closeChannel:
 				return
-			case <-timer.C:
+			case <-monoTimer.C:
 			}
 		}
 	}()
@@ -46,15 +49,6 @@ func NewEstimated(accuracy time.Duration) *Estimated {
 	wg.Wait()
 
 	return est
-}
-
-// Update force updates the time holder and returns current monotonic time
-//
-//go:nosplit
-func (est *Estimated) Update() time.Duration {
-	now := nanotime()
-	atomic.StoreInt64(&est.now, now)
-	return time.Duration(now)
 }
 
 // Stop stops the time updater goroutine
@@ -80,5 +74,5 @@ func (est *Estimated) Stopped() bool {
 //
 //go:nosplit
 func (est *Estimated) Now() time.Duration {
-	return time.Duration(atomic.LoadInt64(&est.now)) * time.Nanosecond
+	return (time.Duration(atomic.LoadInt64(&est.now)) * time.Nanosecond) - est.timestampOffset
 }
