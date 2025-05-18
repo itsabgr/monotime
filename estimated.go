@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var ErrNegative = errors.New("monotime: negative monotonic time")
+
 type Estimated struct {
 	_               sync.Mutex
 	closeChannel    chan struct{}
@@ -36,8 +38,14 @@ func NewEstimated(accuracy time.Duration, timestamp time.Time) *Estimated {
 		monoTimer := time.NewTicker(accuracy)
 		defer monoTimer.Stop()
 		wg.Done()
+		var now, last int64 = 0, 0
 		for {
-			atomic.StoreInt64(&est.now, nanotime())
+			now = nanotime()
+			if now <= last {
+				panic(ErrNegative)
+			}
+			atomic.StoreInt64(&est.now, now)
+			last = now
 			select {
 			case <-est.closeChannel:
 				return
