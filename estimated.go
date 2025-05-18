@@ -16,8 +16,8 @@ type Estimated struct {
 }
 
 func NewEstimated(accuracy time.Duration, timestamp time.Time) *Estimated {
-	if accuracy <= time.Nanosecond {
-		panic(errors.New("accuracy should be more than a nanosecond"))
+	if accuracy <= 10*time.Nanosecond {
+		panic(errors.New("accuracy should be more than 10 nanoseconds"))
 	}
 
 	est := &Estimated{
