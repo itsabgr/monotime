@@ -41,7 +41,7 @@ func NewEstimated(accuracy time.Duration, timestamp time.Time) *Estimated {
 		var now, last int64 = 0, 0
 		for {
 			now = nanotime()
-			if now <= last {
+			if now < last {
 				panic(ErrNegative)
 			}
 			atomic.StoreInt64(&est.now, now)
